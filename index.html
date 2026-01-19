@@ -1,0 +1,192 @@
+        if (nivel === 0) {
+          actividad1Div.style.display = 'block';
+          actividad2Div.style.display = 'none';
+        } else {
+          actividad1Div.style.display = 'none';
+          actividad2Div.style.display = 'block';
+          estadoAct2 = { ...escenarios[escenarioActual] };
+          renderActividad2();
+        }
+      });
+    });
+
+    // Cambio de subactividades (A, B, C)
+    subnivelBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        const esc = btn.getAttribute('data-escenario');
+        cambiarEscenario(esc);
+      });
+    });
+
+    // Dibujar fracción de respuesta del estudiante
+    function dibujarFraccionRespuesta(n, d) {
+      pizzasRespuesta.innerHTML = "";
+      if (d <= 0 || n < 0) return;
+
+      const completas = Math.floor(n / d);
+      const resto = n % d;
+      const totalPizzas = completas + (resto > 0 ? 1 : 0);
+      if (totalPizzas === 0) return;
+
+      for (let i = 0; i < totalPizzas; i++) {
+        const card = document.createElement('div');
+        card.className = 'pizza-respuesta-card';
+        const svgWrap = document.createElement('div');
+        svgWrap.className = 'pizza-respuesta-svg';
+
+        const trozos = (i < completas) ? d : resto;
+        svgWrap.appendChild(crearPizzaConSalame(trozos, d));
+        card.appendChild(svgWrap);
+        pizzasRespuesta.appendChild(card);
+      }
+    }
+
+    // Verificar respuesta
+    btnVerificar.addEventListener('click', () => {
+      const nResp = parseInt(respNum.value, 10);
+      const dResp = parseInt(respDen.value, 10);
+
+      pizzasRespuesta.innerHTML = "";
+      feedbackRespuesta.textContent = "";
+      feedbackRespuesta.className = "nota-pequena";
+      mensajeDiv.style.display = 'none';
+      mensajeTextoDiv.textContent = "";
+
+      if (isNaN(nResp) || isNaN(dResp) || dResp <= 0 || nResp < 0) {
+        feedbackRespuesta.textContent = "Escribe una fracción válida.";
+        feedbackRespuesta.classList.add('respuesta-mal');
+        return;
+      }
+
+      dibujarFraccionRespuesta(nResp, dResp);
+
+      const { num: numCorrecto, den: denCorrecto } = sumaActualSimplificada();
+
+      if (nResp * denCorrecto === dResp * numCorrecto) {
+        // Correcto
+        feedbackRespuesta.textContent = "✔ Bien hecho: tu fracción representa correctamente la pizza que quedó en total.";
+        feedbackRespuesta.classList.add('respuesta-bien');
+
+        mensajeDiv.style.display = 'block';
+        mensajeDiv.classList.add('ok');
+        mensajeTextoDiv.innerHTML = `
+          Has encontrado una fracción equivalente a la suma de las sobras de Luna y Max.<br>
+          Suma simplificada: <strong>${numCorrecto}/${denCorrecto}</strong>.
+        `;
+
+        // Ocultar herramientas de corte
+        btnCortarLuna.style.display = 'none';
+        btnCortarMax.style.display = 'none';
+        panelCorteLuna.style.display = 'none';
+        panelCorteMax.style.display = 'none';
+        btnResetLuna.style.display = 'none';
+        btnResetMax.style.display = 'none';
+      } else {
+        // Incorrecto
+        feedbackRespuesta.textContent =
+          "❌ Esa fracción no corresponde a la cantidad de pizza que quedó.";
+        feedbackRespuesta.classList.add('respuesta-mal');
+
+        mensajeDiv.style.display = 'block';
+        mensajeDiv.classList.remove('ok');
+        mensajeTextoDiv.innerHTML = `
+          Revisa tu fracción y observa las pizzas.<br>
+          Si lo necesitas, prueba a cortar la pizza de Luna o la de Max para ver mejor las porciones.
+        `;
+
+        // Mostrar solo los botones de cortar; el de volver aparece recién tras un corte
+        btnCortarLuna.style.display = 'inline-flex';
+        btnCortarMax.style.display = 'inline-flex';
+      }
+    });
+
+    // Mostrar panel de corte debajo de cada pizza
+    btnCortarLuna.addEventListener('click', () => {
+      panelCorteLuna.style.display = 'block';
+      mensajeCorteLuna.textContent = "";
+      inputFactorLuna.value = "";
+      panelCorteMax.style.display = 'none';
+      mensajeCorteMax.textContent = "";
+    });
+
+    btnCortarMax.addEventListener('click', () => {
+      panelCorteMax.style.display = 'block';
+      mensajeCorteMax.textContent = "";
+      inputFactorMax.value = "";
+      panelCorteLuna.style.display = 'none';
+      mensajeCorteLuna.textContent = "";
+    });
+
+    // Aplicar corte Luna
+    btnAplicarCorteLuna.addEventListener('click', () => {
+      const factor = parseInt(inputFactorLuna.value, 10);
+      if (isNaN(factor) || factor < 1) {
+        mensajeCorteLuna.textContent = "Escribe un número de partes mayor o igual que 1.";
+        return;
+      }
+      if (factor > 10) {
+        mensajeCorteLuna.textContent = "Usa un número de partes razonable (por ejemplo, de 1 a 10).";
+        return;
+      }
+
+      estadoAct2.n1 *= factor;
+      estadoAct2.d1 *= factor;
+      mensajeCorteLuna.textContent = "";
+      dibujarPizzaAct2();
+
+      // Ahora sí tiene sentido ofrecer "Volver al corte original"
+      btnResetLuna.style.display = 'inline-flex';
+    });
+
+    // Aplicar corte Max
+    btnAplicarCorteMax.addEventListener('click', () => {
+      const factor = parseInt(inputFactorMax.value, 10);
+      if (isNaN(factor) || factor < 1) {
+        mensajeCorteMax.textContent = "Escribe un número de partes mayor o igual que 1.";
+        return;
+      }
+      if (factor > 10) {
+        mensajeCorteMax.textContent = "Usa un número de partes razonable (por ejemplo, de 1 a 10).";
+        return;
+      }
+
+      estadoAct2.n2 *= factor;
+      estadoAct2.d2 *= factor;
+      mensajeCorteMax.textContent = "";
+      dibujarPizzaAct2();
+
+      // Mostrar "Volver al corte original" para Max
+      btnResetMax.style.display = 'inline-flex';
+    });
+
+    // Volver al corte original de Luna
+    btnResetLuna.addEventListener('click', () => {
+      const esc = escenarios[escenarioActual];
+      estadoAct2.n1 = esc.n1;
+      estadoAct2.d1 = esc.d1;
+      panelCorteLuna.style.display = 'none';
+      mensajeCorteLuna.textContent = "";
+      inputFactorLuna.value = "";
+      dibujarPizzaAct2();
+      // Después de volver, podemos ocultar el botón hasta que vuelva a cortar
+      btnResetLuna.style.display = 'none';
+    });
+
+    // Volver al corte original de Max
+    btnResetMax.addEventListener('click', () => {
+      const esc = escenarios[escenarioActual];
+      estadoAct2.n2 = esc.n2;
+      estadoAct2.d2 = esc.d2;
+      panelCorteMax.style.display = 'none';
+      mensajeCorteMax.textContent = "";
+      inputFactorMax.value = "";
+      dibujarPizzaAct2();
+      btnResetMax.style.display = 'none';
+    });
+
+    // Inicializar
+    dibujarActividad1(); // Actividad 1 al cargar
+    // Actividad 2 se prepara al entrar en su pestaña
+  </script>
+</body>
+</html>
